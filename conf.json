@@ -1,4 +1,4 @@
 {
-  "targets": ["https://www.facebook.com/robots.txt", "https://www.dailymotion.com/robots.txt"],
+  "targets": ["https://www.facebook.com/", "https://www.dailymotion.com/"],
   "host": "http://192.168.56.1:8080"
 }
