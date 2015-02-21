@@ -1,4 +1,7 @@
-// app.js
+// File: app.js
+// Author: l0th (Daniele Bellavista)
+// Email: daniele.bellavista@gmail.com
+//
 // -*- coding: utf-8 -*-
 // vim:fenc=utf-8
 // vim:foldmethod=syntax
