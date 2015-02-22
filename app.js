@@ -19,6 +19,13 @@ var cookie = require('cookie');
 
 var app = express();
 
+app.use(function(req, res, next) {
+  res.header("Cache-Control", "no-cache, no-store, must-revalidate");
+  res.header("Pragma", "no-cache");
+  res.header("Expires", 0);
+  next();
+});
+
 app.get('/r/:id', function(req, res, next) {
   setTimeout(function() {
     res.redirect(targets[parseInt(req.params.id)]);
